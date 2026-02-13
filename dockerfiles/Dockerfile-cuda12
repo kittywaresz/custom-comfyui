@@ -1,0 +1,80 @@
+# --- STAGE 1: CPython builder ---
+FROM nvidia/cuda:12.8.1-base-ubuntu22.04 AS builder
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# CPython building prerequisites - https://docs.python.org/3/using/configure.html#build-requirements
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    libncurses5-dev \
+    libncursesw5-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libgdbm-dev \
+    libdb5.3-dev \
+    libbz2-dev \
+    libexpat1-dev \
+    liblzma-dev \
+    libffi-dev \
+    uuid-dev \
+    tk-dev \
+    wget \
+    ca-certificates
+
+# CPython building - https://docs.python.org/3/using/configure.html#configure-options
+WORKDIR /opt/python
+RUN wget https://www.python.org/ftp/python/3.13.11/Python-3.13.11.tgz \
+    && tar -xvzf Python-3.13.11.tgz \
+    && rm Python-3.13.11.tgz
+WORKDIR /opt/python/Python-3.13.11
+RUN ./configure --enable-optimizations --with-ensurepip=upgrade \
+    && make -j $(nproc) \
+    && make altinstall
+
+# --- STAGE 2: CUDA runtime and libraries ---
+FROM nvidia/cuda:12.8.1-base-ubuntu22.04 AS cuda-runtime
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# https://docs.python.org/3/using/unix.html#python-related-paths-and-files
+COPY --from=builder /usr/local/bin/python3.13 /usr/local/bin/python3.13
+COPY --from=builder /usr/local/bin/pip3.13 /usr/local/bin/pip3.13
+COPY --from=builder /usr/local/lib/python3.13 /usr/local/lib/python3.13
+COPY --from=builder /usr/local/lib/python3.13 /usr/local/lib/python3.13
+
+RUN ln -svi /usr/local/bin/python3.13 /usr/local/bin/python3 \
+    && ln -svi /usr/local/bin/python3 /usr/local/bin/python \
+    && ln -svi /usr/local/bin/pip3.13 /usr/local/bin/pip3 \
+    && ln -svi /usr/local/bin/pip3 /usr/local/bin/pip
+
+RUN apt-get update && apt-get install -y \
+    git \
+    wget
+
+# ComfyUI core
+WORKDIR /usr/local
+RUN git clone --branch v0.12.0 https://github.com/comfyanonymous/ComfyUI.git comfyui
+
+WORKDIR /usr/local/comfyui
+RUN pip install --no-cache-dir torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu128 \
+    && pip install --no-cache-dir --requirement requirements.txt \
+    && pip install --no-cache-dir --requirement manager_requirements.txt
+
+# .so files with libraries required for custom nodes
+RUN apt-get install -y \
+    # apt-file search libGL.so.1
+    libgl1 \
+    # apt-file search libgthread-2.0.so.0
+    libglib2.0-0
+
+# python packages required for custom nodes
+RUN pip install --no-cache-dir \
+    opencv-python \
+    opencv-contrib-python \
+    gguf \
+    scikit-image \
+    piexif \
+    matplotlib \
+    segment_anything
