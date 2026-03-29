@@ -26,4 +26,14 @@ mkdir diffusion_models/
 wget --header="Authorization: Bearer $HF_AUTH_TOKEN" https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors --directory-prefix diffusion_models/
 # https://huggingface.co/boricuapab/flux1-fill-dev-fp8
 wget --header="Authorization: Bearer $HF_AUTH_TOKEN" https://huggingface.co/boricuapab/flux1-fill-dev-fp8/resolve/main/flux1-fill-dev-fp8.safetensors --directory-prefix diffusion_models/
+
+# upscale_models модельки
+mkdir upscale_models/
+# https://huggingface.co/Kim2091/UltraSharp
+wget --header="Authorization: Bearer $HF_AUTH_TOKEN" https://huggingface.co/Kim2091/UltraSharp/resolve/main/4x-UltraSharp.safetensors --directory-prefix upscale_models/
+
+# loras модельки
+mkdir loras/
+# https://civitai.com/models/1685169/casual-game-art
+wget -O SBG_quality_2_big.safetensors 'https://civitai.com/api/download/models/1907270?type=Model&format=SafeTensor' --directory-prefix loras/
 ```

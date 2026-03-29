@@ -262,7 +262,7 @@ spec:
 EOF
 ```
 
-Настройка ингресса для доступа извне:
+Настройка ингресса для доступа извне (Istio):
 
 ```sh
 ISTIO_ROOT_NS='istio-system'
@@ -318,5 +318,40 @@ spec:
         host: comfyui.$COMFY_UI_NS.svc.cluster.local
         port:
           number: $COMFY_SVC_PORT
+EOF
+```
+
+Настройка ингресса для доступа извне (ingress-nginx):
+
+```sh
+COMFY_UI_NS='hudojka'
+APELSIN_DOMAIN='<secret>'
+
+kubectl apply -f - << EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: comfyui-ingress
+  namespace: $COMFY_UI_NS
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-nginx"
+    kubernetes.io/tls-acme: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - comfyui.$APELSIN_DOMAIN
+    secretName: comfyui-ingress-cert
+  rules:
+  - host: comfyui.$APELSIN_DOMAIN
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: comfyui
+            port:
+              name: http
 EOF
 ```
